@@ -1,7 +1,8 @@
 import os
+import sys
 import PyInstaller.__main__
 
-os.system(' '.join(['python', "setup.py", "build_ext"]))
+os.system(' '.join([sys.executable, "setup.py", "build_ext"]))
 
 with open("requirements.txt") as f:
     requirements = f.read()
