@@ -6,6 +6,46 @@ import os
 routed_ips = []
 
 
+class Route:
+    def __init__(self, ip_address, gateway):
+        self.ip_address = ip_address
+        self.gateway = gateway
+
+    def add(self):
+        if self.is_routed():
+            return True
+
+        if os.name == 'nt':
+            subprocess.Popen(f'route ADD {self.ip_address} MASK 255.255.255.255 {self.gateway}'.split())
+        else:
+            subprocess.Popen(f'ip route add {self.ip_address}/32 via {self.gateway}'.split())
+
+        return self.is_routed()
+
+    def delete(self):
+        if not self.is_routed():
+            return True
+
+        if os.name == 'nt':
+            subprocess.Popen(f'route DELETE {self.ip_address} MASK 255.255.255.255 {self.gateway}'.split())
+        else:
+            subprocess.Popen(f'ip route del {self.ip_address}/32 via {self.gateway}'.split())
+
+        return not self.is_routed()
+
+    def is_routed(self):
+        if os.name == 'nt':
+            cmd = 'route print'
+        else:
+            cmd = 'ip route'
+
+        output = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE).communicate()[0]
+        for line in output.decode("utf-8").splitlines():
+            if self.ip_address in line and self.gateway in line: return True
+
+        return False
+
+
 def main():
     for interface in interfaces():
         threading.Thread(target=monitor_interface, args=interface).start()
