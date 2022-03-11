@@ -2,6 +2,7 @@ import subprocess
 import threading
 import ipaddress
 import os
+import time
 
 routed_ips = []
 
@@ -44,6 +45,38 @@ class Route:
             if self.ip_address in line and self.gateway in line: return True
 
         return False
+
+
+class Ping:
+    def __init__(self, target):
+        self.target = target
+        self.times = []
+        threading.Thread(target=self.start).start()
+
+    def start(self):
+        cmd = ['ping', self.target]
+        if os.name == 'nt':
+            cmd.append('-t')
+
+        self.ping_process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+
+        for line in iter(self.ping_process.stdout.readline, b''):
+            for attribute in line.decode('utf-8').split():
+                try:
+                    if attribute.split('=')[0] == 'time':
+                        if len(self.times) >= 10 * 60:
+                             self.times.pop(0)
+
+                        self.times.append(int(attribute.split('=')[1].replace('ms', '')))
+                except IndexError:
+                    continue
+
+    def avrage_time(self):
+        return int(sum(self.times) / len(self.times))
+
+    def kill(self):
+        if self.ping_process.pid:
+            self.ping_process.kill()
 
 
 def main():
