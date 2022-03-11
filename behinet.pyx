@@ -74,7 +74,7 @@ class Ping:
                 except IndexError:
                     continue
 
-    def avrage_time(self):
+    def average_time(self):
         return int(sum(self.times) / len(self.times))
 
     def kill(self):
