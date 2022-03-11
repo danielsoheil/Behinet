@@ -3,6 +3,8 @@ import threading
 import ipaddress
 import os
 import time
+from subprocess import Popen
+from typing import Any, Union
 
 routed_ips = []
 
@@ -48,6 +50,7 @@ class Route:
 
 
 class Ping:
+    ping_process: Union[Popen[bytes], Popen[Any]]
     def __init__(self, target):
         self.target = target
         self.times = []
