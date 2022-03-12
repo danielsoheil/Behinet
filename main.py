@@ -120,3 +120,7 @@ def route_ip(ip):
     if not ipaddress.ip_address(ip).is_private and ip not in routed_ips:
         routed_ips.append(ip)
         print(ip)
+
+
+if __name__ == '__main__':
+    main()

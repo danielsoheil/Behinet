@@ -1,5 +1,0 @@
-# ignore building file
-*.c
-*.spec
-build/
-dist/
