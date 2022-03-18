@@ -1,0 +1,10 @@
+version: "3.4"
+services:
+  behinet:
+    container_name: behinet
+    image: behinet
+    build: .
+    network_mode: bridge
+    ports:
+        - "1401:1401"
+    restart: always
