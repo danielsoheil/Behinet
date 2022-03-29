@@ -44,7 +44,6 @@ def main():
                 behinet_ip = str(ip)
                 break
 
-
     r.zadd('nodes', {','.join([request.remote_addr, behinet_ip, str(is_routernode)]): str(int(time.time()))})
     nodes = []
     for node in nodes_after_timeout:
