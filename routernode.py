@@ -4,8 +4,12 @@ import ipaddress
 import os
 import time
 import requests
+from flask import Flask, request, jsonify
 
+app = Flask(__name__)
 routed_ips = []
+NODES = set()
+PINGS = dict()
 
 
 class Route:
@@ -68,7 +72,7 @@ class Ping:
                         if len(self.times) >= 10 * 60:
                              self.times.pop(0)
 
-                        self.times.append(int(attribute.split('=')[1].replace('ms', '')))
+                        self.times.append(int(float(attribute.split('=')[1].replace('ms', ''))))
                 except IndexError:
                     continue
 
@@ -78,6 +82,21 @@ class Ping:
     def kill(self):
         if self.ping_process.pid:
             self.ping_process.kill()
+
+
+def nodes_to_pings():
+    for node in NODES:
+        if node not in PINGS:
+            PINGS[node] = Ping(node)
+
+    pings_to_delete = []
+    for ping in PINGS:
+        if ping not in NODES:
+            pings_to_delete.append(ping)
+
+    for ping in pings_to_delete:
+        PINGS[ping].kill()
+        PINGS.pop(ping)
 
 
 def call_boss():
@@ -92,11 +111,37 @@ def call_boss():
 
         res = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data).json()
 
-        if not res['error'] and 'behinet_ip' not in data:
+        if not res['error']:
+            NODES.clear()
+            for node in res['nodes']:
+                NODES.add(node)
+
+            nodes_to_pings()
+
+        if  'behinet_ip' not in data:
             behinet_ip = res['behinet_ip']
             threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
 
         time.sleep(10)
+
+
+@app.route('/pings', methods=['GET', 'POST'])
+def nodes_ping_time():
+    res = {}
+    for ping in PINGS:
+        res[ping] = PINGS[ping].average_time()
+
+    return jsonify({'error': False, 'pings': res})
+
+
+@app.route('/ping/<ip>/<times>', methods=['GET', 'POST'])
+def ip_ping_time(ip, times=4):
+    ping = Ping(ip)
+    time.sleep(int(times))
+    ping_delay = ping.average_time()
+    ping.kill()
+
+    return jsonify({'error': False, 'ping': ping_delay})
 
 
 def connect_to_behinet_network(ip):
@@ -110,9 +155,12 @@ def connect_to_behinet_network(ip):
 
 
 def main():
-    call_boss()
+    threading.Thread(target=app.run, args=('0.0.0.0', 1403)).start()
+
     for interface in interfaces():
         threading.Thread(target=monitor_interface, args=interface).start()
+
+    call_boss()
 
 
 def dependency(name):
