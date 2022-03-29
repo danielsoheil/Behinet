@@ -7,6 +7,6 @@ RUN apt install -y python3-pip tcpdump iputils-ping
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-COPY main.py .
+COPY routernode.py .
 
 ENTRYPOINT [ "python3", "main.py" ]

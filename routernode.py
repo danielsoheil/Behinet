@@ -3,8 +3,7 @@ import threading
 import ipaddress
 import os
 import time
-from subprocess import Popen
-from typing import Any, Union
+import requests
 
 routed_ips = []
 
@@ -50,7 +49,6 @@ class Route:
 
 
 class Ping:
-    ping_process: Union[Popen[bytes], Popen[Any]]
     def __init__(self, target):
         self.target = target
         self.times = []
@@ -82,7 +80,34 @@ class Ping:
             self.ping_process.kill()
 
 
+def call_boss():
+    behinet_ip = None
+    while True:
+        data = {}
+        if behinet_ip is not None:
+            data['behinet_ip'] = behinet_ip
+
+        res = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data).json()
+
+        if not res['error'] and 'behinet_ip' not in data:
+            behinet_ip = res['behinet_ip']
+            threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
+
+        time.sleep(10)
+
+
+def connect_to_behinet_network(ip):
+    p = subprocess.Popen((
+            dependency('edge'), '-c', 'behinet', '-k', 'behinet', '-a', ip, '-s', '255.255.0.0', '-l', 'supernode.v1.behinet.sohe.ir:1402', '-r'
+    ), stdout=subprocess.PIPE)
+
+    for row in iter(p.stdout.readline, b''):
+        line = str(row.rstrip())
+        pass
+
+
 def main():
+    call_boss()
     for interface in interfaces():
         threading.Thread(target=monitor_interface, args=interface).start()
 
@@ -91,7 +116,7 @@ def dependency(name):
     if os.name == 'nt':
         name += '.exe'
 
-    return os.path.join(os.path.dirname(__file__), "dependencies", name)
+    return name
 
 
 def interfaces():
