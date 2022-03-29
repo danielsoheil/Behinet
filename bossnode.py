@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
+
 @app.route('/', methods=['GET', 'POST'])
 def main():
     r = redis.Redis(
@@ -26,7 +27,6 @@ def main():
     if is_routernode:
         # refresh()
         pass
-
 
     if 'behinet_ip' in request.form:
         behinet_ip = request.form['behinet_ip']
