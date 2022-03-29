@@ -47,8 +47,9 @@ def main():
     r.zadd('nodes', {','.join([request.remote_addr, behinet_ip, str(is_routernode)]): str(int(time.time()))})
     nodes = []
     for node in nodes_after_timeout:
-        if node.decode().split(',')[0] != request.remote_addr:
-            nodes.append(node.decode().split(',')[0])
+        if node.decode().split(',')[2] == 'True':
+            if node.decode().split(',')[0] != request.remote_addr:
+                nodes.append(node.decode().split(',')[0])
 
     return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': nodes})
 

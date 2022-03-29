@@ -84,6 +84,9 @@ def call_boss():
     behinet_ip = None
     while True:
         data = {}
+        if 'IMROUTERNODE' in os.environ:
+            data['imrouternode'] = os.environ['IMROUTERNODE']
+
         if behinet_ip is not None:
             data['behinet_ip'] = behinet_ip
 
