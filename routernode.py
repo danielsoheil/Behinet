@@ -111,6 +111,9 @@ def call_boss():
 
         try:
             req = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data)
+            if req.status_code != 200:
+                raise requests.exceptions.RequestException
+
             res = req.json()
 
             if not res['error']:
