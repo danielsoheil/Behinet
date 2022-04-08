@@ -109,18 +109,22 @@ def call_boss():
         if behinet_ip is not None:
             data['behinet_ip'] = behinet_ip
 
-        res = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data).json()
+        try:
+            req = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data)
+            res = req.json()
 
-        if not res['error']:
-            NODES.clear()
-            for node in res['nodes']:
-                NODES.add(node)
+            if not res['error']:
+                NODES.clear()
+                for node in res['nodes']:
+                    NODES.add(node)
 
-            nodes_to_pings()
+                nodes_to_pings()
 
-        if  'behinet_ip' not in data:
-            behinet_ip = res['behinet_ip']
-            threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
+            if 'behinet_ip' not in data:
+                behinet_ip = res['behinet_ip']
+                threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
+        except requests.exceptions.RequestException:
+            pass
 
         time.sleep(10)
 
