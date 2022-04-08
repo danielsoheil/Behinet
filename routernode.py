@@ -165,7 +165,7 @@ def main():
     threading.Thread(target=app.run, args=('0.0.0.0', 1403)).start()
 
     for interface in interfaces():
-        threading.Thread(target=monitor_interface, args=interface).start()
+        threading.Thread(target=monitor_interface, args=(interface, )).start()
 
     call_boss()
 
