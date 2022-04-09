@@ -40,7 +40,7 @@ def refresh():
         ROUTES[node2][node1] = node1_to_node2[::-1]  # [::-1] to reverse
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/hi_boss', methods=['GET', 'POST'])
 def main():
     nodes_to_remove = []
     for node in NODES:

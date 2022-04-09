@@ -101,7 +101,7 @@ def call_boss():
             data['behinet_ip'] = behinet_ip
 
         try:
-            req = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/', data=data)
+            req = requests.get('http://bossnode.v1.behinet.sohe.ir:1401/hi_boss', data=data)
             if req.status_code != 200:
                 raise requests.exceptions.RequestException
 
