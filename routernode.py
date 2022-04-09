@@ -89,15 +89,6 @@ def nodes_to_pings():
         if node not in PINGS:
             PINGS[node] = Ping(node)
 
-    pings_to_delete = []
-    for ping in PINGS:
-        if ping not in NODES:
-            pings_to_delete.append(ping)
-
-    for ping in pings_to_delete:
-        PINGS[ping].kill()
-        PINGS.pop(ping)
-
 
 def call_boss():
     behinet_ip = None
@@ -142,11 +133,18 @@ def nodes_ping_time():
 
 
 @app.route('/ping/<ip>/<times>', methods=['GET', 'POST'])
-def ip_ping_time(ip, times=4):
-    ping = Ping(ip)
+def ip_ping_time(ip, times=0):
+    if ip not in PINGS:
+        PINGS[ip] = Ping(ip)
+
     time.sleep(int(times))
-    ping_delay = ping.average_time()
-    ping.kill()
+    while True:
+        # noinspection PyBroadException
+        try:
+            ping_delay = PINGS[ip].average_time()
+            break
+        except Exception:
+            pass
 
     return jsonify({'error': False, 'ping': ping_delay})
 
@@ -165,8 +163,9 @@ def main():
     threading.Thread(target=app.run, args=('0.0.0.0', 1403)).start()
 
     for interface in interfaces():
-        threading.Thread(target=monitor_interface, args=interface).start()
+        threading.Thread(target=monitor_interface, args=(interface, )).start()
 
+    time.sleep(10)  # to get webserver up
     call_boss()
 
 

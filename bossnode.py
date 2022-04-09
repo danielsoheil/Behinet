@@ -13,38 +13,33 @@ NODES = set()
 PINGS = dict()
 ROUTES = dict()
 
+
 def refresh():
-    nodes_to_delete = []
-    for node in NODES:
-        try:
-            req = requests.get(f'http://{node}:1403/pings')
-            if req.status_code != 200:
-                raise requests.exceptions.RequestException
-
-            PINGS[node] = req.json()['pings']
-        except requests.exceptions.RequestException:
-            nodes_to_delete.append(node)
-
-    for node in nodes_to_delete:
-        NODES.remove(node)
-
     all_relations_in_tuple_form = dmt.all_possible_relations_between_ips(NODES)
 
     initial_data = []
+    ip_list = []
     for node1, node2 in all_relations_in_tuple_form:
-        initial_data.append((node1, node2, PINGS[node1][node2]))
+        # noinspection PyBroadException
+        try:
+            pass
+            ping = requests.get(f'http://{node1}:1403/ping/{node2}/0').json()['ping']
+            initial_data.append((node1, node2, ping))
+            ip_list.append(node1)
+            ip_list.append(node2)
+        except Exception:
+            pass
 
-    ROUTES = {}
-    for node1, node2 in all_relations_in_tuple_form:
-        node1_to_node2 = behinet_ai.best_route(NODES, node1, node2, initial_data)
+    for node1, node2 in initial_data:
+        node1_to_node2 = behinet_ai.best_route(ip_list, node1, node2, initial_data)
 
         if node1 not in ROUTES:
             ROUTES[node1] = {}
-        ROUTES[node1][node2] = node1_to_node2
+        ROUTES[node1][node2] = node1_to_node2.reverse()
 
         if node2 not in ROUTES:
             ROUTES[node2] = {}
-        ROUTES[node2][node1] = node1_to_node2.reverse()
+        ROUTES[node2][node1] = node1_to_node2
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -63,11 +58,6 @@ def main():
     is_routernode = 'imrouternode' in request.form and hashlib.sha256(
             request.form['imrouternode'].encode('utf-8')
     ).hexdigest() == 'c3f4a78a0a2d83c1cba2bdeb7f5c9522cd424c3792ab163b1c09035e3afaaec4'
-
-    old_node = False
-    for node in nodes_after_timeout:
-        if node.decode().split(',')[0] == request.remote_addr:
-            old_node = True
 
     if 'behinet_ip' in request.form:
         behinet_ip = request.form['behinet_ip']
@@ -100,7 +90,7 @@ def main():
                 res.add(node_pub_ip)
 
     if do_refresh and len(NODES) > 1:
-        threading.Thread(target=refresh).start()
+        refresh()
 
     return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': list(NODES)})
 
