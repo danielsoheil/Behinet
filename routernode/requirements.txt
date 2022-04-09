@@ -1,1 +1,3 @@
 ipaddress
+flask
+requests
