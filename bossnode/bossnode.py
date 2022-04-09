@@ -41,7 +41,7 @@ def refresh():
 
 
 @app.route('/hi_boss', methods=['GET', 'POST'])
-def main():
+def hi_boss():
     nodes_to_remove = []
     for node in NODES:
         if node['lastupdate'] < (int(time.time()) - 60):
