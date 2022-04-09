@@ -9,4 +9,4 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY routernode.py .
 
-ENTRYPOINT [ "python3", "main.py" ]
+ENTRYPOINT [ "python3", "routernode.py" ]
