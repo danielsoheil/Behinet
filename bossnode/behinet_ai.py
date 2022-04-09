@@ -53,8 +53,5 @@ def best_route(ip_list, source_ip, target_ip, initial_data):
                     alg.generate_all_possible_chains_in_frontier_with_certain_length(frontier, data_dict, source, target, i)        
                 elif time.time() - start_time <= 120:
                     alg.generate_random_chains_in_frontier(frontier, data_dict, source, target, 150, i)
-                    
-    return [str(ip) for ip in frontier.best_layer.nodes_arrangement]
-                
-    
-    
+
+    return {'routes': [str(ip) for ip in frontier.best_layer.nodes_arrangement], 'ping': frontier.best_layer.total_cost}

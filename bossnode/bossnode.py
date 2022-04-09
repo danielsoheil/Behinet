@@ -37,7 +37,10 @@ def refresh():
 
         if node2 not in ROUTES:
             ROUTES[node2] = {}
-        ROUTES[node2][node1] = node1_to_node2[::-1]  # [::-1] to reverse
+
+        node2_to_node1 = node1_to_node2
+        node2_to_node1['routes'] = node1_to_node2['routes'][::-1]  # [::-1] to reverse
+        ROUTES[node2][node1] = node2_to_node1
 
 
 @app.route('/hi_boss', methods=['GET', 'POST'])
