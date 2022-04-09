@@ -1,5 +1,4 @@
 import time
-import redis
 import hashlib
 import ipaddress
 import threading
@@ -9,20 +8,19 @@ import data_mining_tools as dmt
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-NODES = set()
+NODES = list()
 PINGS = dict()
 ROUTES = dict()
 
 
 def refresh():
-    all_relations_in_tuple_form = dmt.all_possible_relations_between_ips(NODES)
+    all_relations_in_tuple_form = dmt.all_possible_relations_between_ips([node['public_ip'] for node in NODES])
 
     initial_data = []
     ip_list = []
     for node1, node2 in all_relations_in_tuple_form:
         # noinspection PyBroadException
         try:
-            pass
             ping = requests.get(f'http://{node1}:1403/ping/{node2}/0').json()['ping']
             initial_data.append((node1, node2, ping))
             ip_list.append(node1)
@@ -30,30 +28,29 @@ def refresh():
         except Exception:
             pass
 
-    for node1, node2 in initial_data:
+    for node1, node2, *_ in initial_data:
         node1_to_node2 = behinet_ai.best_route(ip_list, node1, node2, initial_data)
 
         if node1 not in ROUTES:
             ROUTES[node1] = {}
-        ROUTES[node1][node2] = node1_to_node2.reverse()
+        ROUTES[node1][node2] = node1_to_node2
 
         if node2 not in ROUTES:
             ROUTES[node2] = {}
-        ROUTES[node2][node1] = node1_to_node2
+        ROUTES[node2][node1] = node1_to_node2[::-1]  # [::-1] to reverse
 
 
 @app.route('/', methods=['GET', 'POST'])
 def main():
-    r = redis.Redis(
-        host='ipv4.sohe.ir',
-        port=6379,
-        password=''
-    )
-    nodes_befor_timeout = r.zrange('nodes', '0', '-1')
-    r.zremrangebyscore('nodes', '-inf', str(int(time.time()) - 60))
-    nodes_after_timeout = r.zrange('nodes', '0', '-1')
+    nodes_to_remove = []
+    for node in NODES:
+        if node['lastupdate'] < (int(time.time()) - 60):
+            nodes_to_remove.append(node)
 
-    do_refresh = len(nodes_after_timeout) < len(nodes_befor_timeout)
+    for node in nodes_to_remove:
+        NODES.remove(node)
+
+    do_refresh = len(nodes_to_remove) > 0
 
     is_routernode = 'imrouternode' in request.form and hashlib.sha256(
             request.form['imrouternode'].encode('utf-8')
@@ -65,8 +62,8 @@ def main():
         for ip in ipaddress.IPv4Network('10.0.0.0/16').hosts():
             invalid_behinet_ip = False
 
-            for node in nodes_after_timeout:
-                if node.decode().split(',')[1] == str(ip):
+            for node in NODES:
+                if node['behinet_ip'] == str(ip):
                     invalid_behinet_ip = True
 
             if invalid_behinet_ip:
@@ -75,24 +72,31 @@ def main():
                 behinet_ip = str(ip)
                 break
 
-    r.zadd('nodes', {','.join([request.remote_addr, behinet_ip, str(is_routernode)]): str(int(time.time()))})
-    
-    nodes_after_add_new = r.zrange('nodes', '0', '-1')
-    do_refresh = do_refresh or (len(nodes_after_timeout) < len(nodes_after_add_new) and is_routernode)
+    node_data = {
+        'public_ip': request.remote_addr,
+        'behinet_ip': behinet_ip,
+        'is_routernode': is_routernode,
+        'lastupdate': time.time()
+    }
 
-    res = set()
-    NODES.clear()
-    for node in nodes_after_add_new:
-        node_pub_ip = node.decode().split(',')[0]
-        if node.decode().split(',')[2] == 'True':
-            NODES.add(node_pub_ip)
-            if node_pub_ip != request.remote_addr:
-                res.add(node_pub_ip)
+    old_node = False
+    for node in range(len(NODES)):
+        if NODES[node]['public_ip'] == request.remote_addr:
+            old_node = True
+            NODES[node] = node_data
 
-    if do_refresh and len(NODES) > 1:
-        refresh()
+    if not old_node:
+        NODES.append(node_data)
 
-    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': list(NODES)})
+    do_refresh = do_refresh or (not old_node and is_routernode)
+
+    if do_refresh:
+        if len(NODES) > 1:
+            threading.Thread(target=refresh).start()
+        else:
+            ROUTES.clear()
+
+    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': [node['public_ip'] for node in NODES]})
 
 
 if __name__ == '__main__':
