@@ -108,5 +108,55 @@ def hi_boss():
     return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': res})
 
 
+@app.route('/behiroute/<firstnode>/<ip>/<client_ping>', methods=['GET', 'POST'])
+def behiroute(firstnode, ip, client_ping):
+    if firstnode not in [node['public_ip'] for node in NODES]:
+        return {'error': True, 'message': 'invalid firstnode'}
+
+    best = None
+    for node in [node['public_ip'] for node in NODES]:
+        # noinspection PyBroadException
+        try:
+            ping = requests.get(f'http://{node}:1403/ping/{ip}/0').json()['ping']
+            if best is None or ping < best['ping']:
+                best = {'node': node, 'ping': ping}
+        except Exception:
+            pass
+
+    if best is not None:
+        lastnode = best['node']
+    else:
+        return {'error': True, 'message': 'firstnode dont have route to this ip'}
+
+    res = {}
+    ROUTES_COPY = copy.deepcopy(ROUTES)
+    if firstnode == lastnode:
+        res['ping'] = ping
+        res['routes'] = [firstnode]
+    else:
+        res['ping'] = ROUTES_COPY[firstnode][lastnode]['ping'] + ping
+        res['routes'] = ROUTES_COPY[firstnode][lastnode]['routes']
+
+    if client_ping > res['ping']:
+        for route in res['routes']:
+            # route ip via route
+            pass
+
+    res['routes'].append(ip)
+    return {'error': False, **res}
+
+
+def ip_behinet_to_public(ip):
+    for node in NODES:
+        if node['behinet_ip'] == ip:
+            return node['public_ip']
+
+
+def ip_public_to_behinet(ip):
+    for node in NODES:
+        if node['public_ip'] == ip:
+            return node['behinet_ip']
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=1401)
