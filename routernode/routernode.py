@@ -10,7 +10,8 @@ app = Flask(__name__)
 routed_ips = []
 NODES = set()
 PINGS = dict()
-
+FIRSTNODE = {}
+BOSSNODE_CONNECTION = False
 
 class Route:
     def __init__(self, ip_address, gateway):
@@ -91,6 +92,7 @@ def nodes_to_pings():
 
 
 def call_boss():
+    global BOSSNODE_CONNECTION
     behinet_ip = None
     while True:
         data = {}
@@ -107,6 +109,8 @@ def call_boss():
 
             res = req.json()
 
+            BOSSNODE_CONNECTION = True
+
             if not res['error']:
                 NODES.clear()
                 for node in res['nodes']:
@@ -117,8 +121,14 @@ def call_boss():
             if 'behinet_ip' not in data:
                 behinet_ip = res['behinet_ip']
                 threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
+
+            for node in res['nodes']:
+                if FIRSTNODE == {} or ip_ping_time(node)['ping'] < FIRSTNODE['ping']:
+                    FIRSTNODE['public_ip'] = node
+                    FIRSTNODE['ping'] = ip_ping_time(node)['ping']
+
         except requests.exceptions.RequestException:
-            pass
+            BOSSNODE_CONNECTION = False
 
         time.sleep(10)
 
@@ -146,7 +156,7 @@ def ip_ping_time(ip, times=0):
         except Exception:
             pass
 
-    return jsonify({'error': False, 'ping': ping_delay})
+    return {'error': False, 'ping': ping_delay}
 
 
 def connect_to_behinet_network(ip):
@@ -162,11 +172,21 @@ def connect_to_behinet_network(ip):
 def main():
     threading.Thread(target=app.run, args=('0.0.0.0', 1403)).start()
 
+    webserver_is_down = True
+    while webserver_is_down:
+        try:
+            requests.get('http://127.0.0.1:1403')
+            webserver_is_down = False
+        except requests.exceptions.RequestException:
+            pass
+
+    threading.Thread(target=call_boss).start()
+
+    while FIRSTNODE == {}:
+        pass  # wait for finding firstnode
+
     for interface in interfaces():
         threading.Thread(target=monitor_interface, args=(interface, )).start()
-
-    time.sleep(10)  # to get webserver up
-    call_boss()
 
 
 def dependency(name):
