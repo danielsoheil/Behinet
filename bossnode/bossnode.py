@@ -131,10 +131,10 @@ def behiroute(firstnode, ip, client_ping):
     res = {}
     ROUTES_COPY = copy.deepcopy(ROUTES)
     if firstnode == lastnode:
-        res['ping'] = ping
+        res['ping'] = best['ping']
         res['routes'] = [firstnode]
     else:
-        res['ping'] = ROUTES_COPY[firstnode][lastnode]['ping'] + ping
+        res['ping'] = ROUTES_COPY[firstnode][lastnode]['ping'] + best['ping']
         res['routes'] = ROUTES_COPY[firstnode][lastnode]['routes']
 
     if int(client_ping) > res['ping']:
