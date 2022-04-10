@@ -1,8 +1,8 @@
 import time
 import hashlib
 import ipaddress
-import threading
 import requests
+import copy
 import behinet_ai
 import data_mining_tools as dmt
 from flask import Flask, request, jsonify
@@ -38,7 +38,7 @@ def refresh():
         if node2 not in ROUTES:
             ROUTES[node2] = {}
 
-        node2_to_node1 = node1_to_node2
+        node2_to_node1 = copy.deepcopy(node1_to_node2)
         node2_to_node1['routes'] = node1_to_node2['routes'][::-1]  # [::-1] to reverse
         ROUTES[node2][node1] = node2_to_node1
 
@@ -95,11 +95,17 @@ def hi_boss():
 
     if do_refresh:
         if len(NODES) > 1:
-            threading.Thread(target=refresh).start()
+            # run on new thread if need
+            refresh()
         else:
             ROUTES.clear()
 
-    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': [node['public_ip'] for node in NODES]})
+    res = []
+    for node in NODES:
+        if node['is_routernode'] and node['public_ip'] != request.remote_addr:
+            res.append(node['public_ip'])
+
+    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': res})
 
 
 if __name__ == '__main__':
