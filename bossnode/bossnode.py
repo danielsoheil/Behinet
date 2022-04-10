@@ -137,7 +137,7 @@ def behiroute(firstnode, ip, client_ping):
         res['ping'] = ROUTES_COPY[firstnode][lastnode]['ping'] + ping
         res['routes'] = ROUTES_COPY[firstnode][lastnode]['routes']
 
-    if client_ping > res['ping']:
+    if int(client_ping) > res['ping']:
         for route in res['routes']:
             # route ip via route
             pass
