@@ -13,6 +13,7 @@ PINGS = dict()
 FIRSTNODE = {}
 BOSSNODE_CONNECTION = False
 
+
 class Route:
     def __init__(self, ip_address, gateway):
         self.ip_address = ip_address
@@ -71,9 +72,11 @@ class Ping:
                 try:
                     if attribute.split('=')[0] == 'time':
                         if len(self.times) >= 10 * 60:
-                             self.times.pop(0)
+                            self.times.pop(0)
 
-                        self.times.append(int(float(attribute.split('=')[1].replace('ms', ''))))
+                        ping = int(float(attribute.split('=')[1].replace('ms', '')))
+                        ping = 1 if ping == 0 else ping
+                        self.times.append(ping)
                 except IndexError:
                     continue
 
@@ -120,7 +123,7 @@ def call_boss():
 
             if 'behinet_ip' not in data:
                 behinet_ip = res['behinet_ip']
-                threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'], )).start()
+                threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'],)).start()
 
             for node in res['nodes']:
                 if FIRSTNODE == {} or ip_ping_time(node)['ping'] < FIRSTNODE['ping']:
@@ -152,7 +155,11 @@ def ip_ping_time(ip, times=0):
         # noinspection PyBroadException
         try:
             ping_delay = PINGS[ip].average_time()
-            break
+            if ping_delay == 0:
+                raise Exception
+            else:
+                break
+
         except Exception:
             pass
 
@@ -161,7 +168,8 @@ def ip_ping_time(ip, times=0):
 
 def connect_to_behinet_network(ip):
     p = subprocess.Popen((
-            dependency('edge'), '-c', 'behinet', '-k', 'behinet', '-a', ip, '-s', '255.255.0.0', '-l', 'supernode.v1.behinet.sohe.ir:1402', '-r'
+        dependency('edge'), '-c', 'behinet', '-k', 'behinet', '-a', ip, '-s', '255.255.0.0', '-l',
+        'supernode.v1.behinet.sohe.ir:1402', '-r'
     ), stdout=subprocess.PIPE)
 
     for row in iter(p.stdout.readline, b''):
@@ -182,11 +190,12 @@ def main():
 
     threading.Thread(target=call_boss).start()
 
-    while FIRSTNODE == {}:
-        pass  # wait for finding firstnode
+    if 'IMROUTERNODE' not in os.environ:
+        while FIRSTNODE == {}:
+            pass  # wait for finding firstnode
 
-    for interface in interfaces():
-        threading.Thread(target=monitor_interface, args=(interface, )).start()
+        for interface in interfaces():
+            threading.Thread(target=monitor_interface, args=(interface,)).start()
 
 
 def dependency(name):
@@ -213,15 +222,34 @@ def monitor_interface(interface):
         try:
             ip_and_port_splited = line.split('> ')[1].split(':')[0].split('.')
             ip = f"{ip_and_port_splited[0]}.{ip_and_port_splited[1]}.{ip_and_port_splited[2]}.{ip_and_port_splited[3]}"
-            threading.Thread(target=route_ip, args=(ip, )).start()
+            threading.Thread(target=route_ip, args=(ip,)).start()
         except IndexError:
             pass
 
 
+@app.route('/boss_say_route/<target>/<route>', methods=['GET', 'POST'])
+def boss_say_route(target, route):
+    return {'error': False} if Route(target, route).add() else {'error': True}
+
+
 def route_ip(ip):
-    if not ipaddress.ip_address(ip).is_private and ip not in routed_ips:
-        routed_ips.append(ip)
-        print(ip)
+    if ip in routed_ips:
+        return
+
+    if not ipaddress.ip_address(ip).is_private:
+        ping = ip_ping_time(ip, 4)['ping']
+        if BOSSNODE_CONNECTION:
+            routed_ips.append(ip)
+            firstnode_ip = FIRSTNODE["public_ip"]
+            res = requests.get(f'http://bossnode.v1.behinet.sohe.ir:1401/behiroute/{firstnode_ip}/{ip}/{ping}').json()
+            if res['ping'] < ping:
+                Route(ip, res['routes'][0]).add()
+            print(ip)
+        else:
+            while not BOSSNODE_CONNECTION:
+                pass  # wait for bossnode connection
+
+            route_ip(ip)
 
 
 if __name__ == '__main__':

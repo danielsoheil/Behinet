@@ -100,21 +100,25 @@ def hi_boss():
         else:
             ROUTES.clear()
 
+    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': routernodes(request.remote_addr)})
+
+
+def routernodes(self_ip):
     res = []
     for node in NODES:
-        if node['is_routernode'] and node['public_ip'] != request.remote_addr:
+        if node['is_routernode'] and node['public_ip'] != self_ip:
             res.append(node['public_ip'])
 
-    return jsonify({'error': False, 'behinet_ip': behinet_ip, 'nodes': res})
+    return res
 
 
 @app.route('/behiroute/<firstnode>/<ip>/<client_ping>', methods=['GET', 'POST'])
 def behiroute(firstnode, ip, client_ping):
-    if firstnode not in [node['public_ip'] for node in NODES]:
+    if firstnode not in routernodes(request.remote_addr):
         return {'error': True, 'message': 'invalid firstnode'}
 
     best = None
-    for node in [node['public_ip'] for node in NODES]:
+    for node in routernodes(request.remote_addr):
         # noinspection PyBroadException
         try:
             ping = requests.get(f'http://{node}:1403/ping/{ip}/0').json()['ping']
@@ -138,12 +142,33 @@ def behiroute(firstnode, ip, client_ping):
         res['routes'] = ROUTES_COPY[firstnode][lastnode]['routes']
 
     if int(client_ping) > res['ping']:
-        for route in res['routes']:
-            # route ip via route
-            pass
+        route_in_behinet(ip, res['routes'])
+
+    for node in range(len(res['routes'])):
+        if ip_public_to_behinet(res['routes'][node]) is not None:
+            res['routes'][node] = ip_public_to_behinet(res['routes'][node])
 
     res['routes'].append(ip)
     return {'error': False, **res}
+
+
+def route_in_behinet(ip, routes):
+    routes = routes[::-1]
+    do_again_with_new_routes = False
+    for route in range(len(routes)):
+        try:
+            req = requests.get(f'http://{routes[route + 1]}:1403/boss_say_route/{ip}/{ip_public_to_behinet(routes[route])}')
+            if req.status_code == 200 and 'error' in req.json() and req.json()['error']:
+                raise requests.exceptions.RequestException
+        except IndexError:
+            pass
+        except requests.exceptions.RequestException:
+            routes.remove(routes[route + 1])
+            do_again_with_new_routes = True
+            break
+
+    if do_again_with_new_routes:
+        route_in_behinet(ip, routes[::-1])
 
 
 def ip_behinet_to_public(ip):
