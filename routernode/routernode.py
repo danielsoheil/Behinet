@@ -126,6 +126,10 @@ def call_boss():
                 threading.Thread(target=connect_to_behinet_network, args=(res['behinet_ip'],)).start()
 
             for node in res['nodes']:
+                # dont route nodes to prevent disorder
+                if node not in routed_ips:
+                    routed_ips.append(node)
+
                 if FIRSTNODE == {} or ip_ping_time(node)['ping'] < FIRSTNODE['ping']:
                     FIRSTNODE['public_ip'] = node
                     FIRSTNODE['ping'] = ip_ping_time(node)['ping']
@@ -187,6 +191,9 @@ def main():
             webserver_is_down = False
         except requests.exceptions.RequestException:
             pass
+
+    # dont route bossnode to prevent disorder
+    routed_ips.append(socket.gethostbyname('bossnode.v1.behinet.sohe.ir'))
 
     threading.Thread(target=call_boss).start()
 
