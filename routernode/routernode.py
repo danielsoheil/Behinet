@@ -237,9 +237,9 @@ def route_ip(ip):
         return
 
     if not ipaddress.ip_address(ip).is_private:
-        ping = ip_ping_time(ip, 4)['ping']
         if BOSSNODE_CONNECTION:
             routed_ips.append(ip)
+            ping = ip_ping_time(ip, 4)['ping']
             firstnode_ip = FIRSTNODE["public_ip"]
             res = requests.get(f'http://bossnode.v1.behinet.sohe.ir:1401/behiroute/{firstnode_ip}/{ip}/{ping}').json()
             if res['ping'] < ping:
