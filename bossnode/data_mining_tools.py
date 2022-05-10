@@ -15,6 +15,11 @@ def store_ip_addresses_into_nodes_set(ip_list):
     for ip in ip_list: nodes_set.add(util.Node(ip))
     return nodes_set
 
+def store_ip_addresses_into_nodes_dict(ip_list):
+    ip_dict = {}
+    for ip in ip_list: ip_dict[ip] = util.Node(ip)
+    return ip_dict
+
 def set_neighbors_for_nodes(nodes_set):
     for node in nodes_set: node.set_neighbors(nodes_set - set([node]))
 
