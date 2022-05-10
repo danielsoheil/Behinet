@@ -65,7 +65,6 @@ def generate_chains_with_middle_climb_in_frontier(frontier, data_dict, source, t
         current_node = source; nodes_cnt = 1
         while nodes_cnt < nodes_lim - 1 and len(new_chain.possible_actions_for_node_in_chain(frontier, current_node, data_dict)):
             new_action = new_chain.action_with_middle_cost_for_node(frontier, current_node, data_dict)
-            for action in new_chain.possible_actions_for_node_in_chain(frontier, current_node, data_dict): print(action)
             new_chain.attach_action(new_action)
             current_node = new_chain.nodes_arrangement[-1]
             nodes_cnt += 1
@@ -90,16 +89,15 @@ def generate_chains_with_maximum_climb_in_frontier(frontier, data_dict, source, 
 
 def generate_chains_intelligently(frontier, data_dict, source, target, attempts, nodes_lim):
     def generate_chains(frontier, data_dict, origin, target, action_chain, nodes_lim, attempts_cnt):
-        if attempts_cnt > attempts: print('0'); return
+        if attempts_cnt > attempts: return
             
         if action_chain.total_cost > frontier.best_layer.total_cost:
-            frontier.add_layer(action_chain); attempts_cnt += 1; print('1'); return
+            frontier.add_layer(action_chain); attempts_cnt += 1; return
             
         if origin == target and len(action_chain.nodes_arrangement) <= nodes_lim:
-            frontier.add_layer(action_chain); attempts_cnt += 1; print('2'); return
+            frontier.add_layer(action_chain); attempts_cnt += 1; return
         
         for neighbor_node in origin.neighbors - set(action_chain.nodes_arrangement): 
-            print('3')
             new_action = util.Action(action_chain.chain[-1], origin, neighbor_node, direct_cost(data_dict, origin, neighbor_node))
             new_action_chain = deepcopy(action_chain); new_action_chain.attach_action(new_action)
             generate_chains(frontier, data_dict, neighbor_node, target, new_action_chain, nodes_lim, attempts_cnt)
