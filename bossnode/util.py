@@ -44,6 +44,9 @@ class Node:
         try: self.neighbors.remove(node)
         except: pass
         
+    def empty_neighbors(self):
+        self.neighbors.clear()
+        
     def possible_goals_for_next_action(self, current_action):
         possible_goals = deepcopy(self.neighbors)
         action = current_action
@@ -111,6 +114,7 @@ class ActionChain:
     def __init__(self, source, target):
         self.source = source
         self.target = target
+        self.neighbors = set()
         self.chain = [None]
         self.nodes_arrangement = [source]
         self.total_cost = 0
@@ -123,6 +127,9 @@ class ActionChain:
         for node in self.nodes_arrangement[1:]:
             str += ' --> ' + node.ip_address
         return str
+    
+    def __hash__(self):
+        return hash(tuple(self.nodes_arrangement))
     
     def find_action_by_origin(self, node):
         for action in self.chain: 
@@ -206,6 +213,9 @@ class ActionChain:
     
         def __eq__(self, other):
             return self.nodes_arrangement == other.nodes_arrangement
+        
+        def __hash__(self):
+            return hash(tuple(self.nodes_arrangement))
                    
     def export_baby_chain_using_nodes(self, node_1, node_2):
         action_1 = self.find_action_by_origin(node_1); action_2 = self.find_action_by_goal(node_2)
@@ -256,6 +266,10 @@ class ActionChain:
         else: 
             raise Exception("Action chain completion is impossible at this point")
         
+    def add_neighbor(self, action_chain):
+        if self.target == action_chain.source and not len(set(self.nodes_arrangement).intersection(action_chain.nodes_arrangement[1:])):
+            self.neighbors.add(action_chain)
+            
         
         
 class Frontier:
